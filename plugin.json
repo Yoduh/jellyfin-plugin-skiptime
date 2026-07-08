@@ -1,0 +1,16 @@
+{
+    "guid": "ace8cec2-ff4f-4390-bddd-de21b0135ec1",
+    "name": "Skip Time",
+    "description": "Configure custom skip segments for Jellyfin media.",
+    "overview": "Allows administrators to define skip ranges for movies and episodes. Skip ranges are exposed as Jellyfin media segments and can be used for automatic skipping during playback.",
+    "owner": "Yoduh",
+    "category": "General",
+    "imageUrl": "",
+    "versions": [
+        {
+            "version": "1.0.0.0",
+            "targetAbi": "10.11.0.0",
+            "sourceUrl": ""
+        }
+    ]
+}

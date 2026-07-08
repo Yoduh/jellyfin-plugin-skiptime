@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Skip Time</title>
+    </head>
+
+    <body>
+        <div id="SkipTimeConfigPage" data-role="page" class="page type-interior pluginConfigurationPage">
+            <div data-role="content">
+                <div class="content-primary">
+                    <form id="SkipTimeForm">
+                        <div class="verticalSection">
+                            <h2>Skip Time</h2>
+
+                            <p class="fieldDescription">Configure skip ranges for movies and television episodes. These ranges will be exposed to Jellyfin as media segments and can be skipped automatically during playback.</p>
+                        </div>
+
+                        <br />
+
+                        <div class="verticalSection">
+                            <h3>Search Library</h3>
+
+                            <div class="inputContainer">
+                                <input id="txtSearch" is="emby-input" type="text" autocomplete="off" placeholder="Movie or episode title" />
+                            </div>
+
+                            <div id="searchResults" class="selectionList"></div>
+                        </div>
+
+                        <br />
+
+                        <div class="verticalSection">
+                            <h3>Selected Item</h3>
+
+                            <div id="selectedTitle">No item selected.</div>
+                        </div>
+
+                        <br />
+
+                        <div class="verticalSection">
+                            <h3>Skip Ranges</h3>
+
+                            <table class="detailTable">
+                                <thead>
+                                    <tr>
+                                        <th>Start</th>
+
+                                        <th>End</th>
+
+                                        <th></th>
+                                    </tr>
+                                </thead>
+
+                                <tbody id="segmentTableBody"></tbody>
+                            </table>
+
+                            <br />
+
+                            <button id="btnAdd" is="emby-button" type="button" class="raised">Add Range</button>
+                        </div>
+
+                        <br />
+
+                        <div class="verticalSection">
+                            <button id="btnSave" is="emby-button" type="submit" class="raised button-submit">Save</button>
+
+                            <button id="btnDelete" is="emby-button" type="button" class="raised">Delete All</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <script src="configPage.js"></script>
+
+        <script>
+            document.querySelector("#SkipTimeForm").addEventListener("submit", function (e) {
+                e.preventDefault();
+
+                SkipTime.save();
+            });
+
+            document.querySelector("#txtSearch").addEventListener("input", function (e) {
+                SkipTime.searchLibrary(e.target.value);
+            });
+
+            document.querySelector("#btnAdd").addEventListener("click", function () {
+                SkipTime.addSegment();
+            });
+
+            document.querySelector("#btnDelete").addEventListener("click", function () {
+                if (confirm("Delete all skip ranges for this item?")) {
+                    SkipTime.removeAll();
+                }
+            });
+        </script>
+    </body>
+</html>
