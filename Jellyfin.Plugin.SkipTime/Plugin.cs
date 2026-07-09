@@ -37,6 +37,9 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// </summary>
     public static Plugin? Instance { get; private set; }
 
+    /// <summary>
+    /// Gets the path to the plugin's SQLite database file.
+    /// </summary>
     public string DatabasePath =>
         Path.Combine(ApplicationPaths.PluginConfigurationsPath, "SkipTime.db");
 
@@ -48,11 +51,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             new PluginPageInfo
             {
                 Name = Name,
-                EmbeddedResourcePath = string.Format(
-                    CultureInfo.InvariantCulture,
-                    "{0}.Configuration.configPage.html",
-                    GetType().Namespace
-                )
+                EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html"
             }
         ];
     }

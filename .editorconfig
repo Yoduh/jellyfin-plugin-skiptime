@@ -58,6 +58,10 @@ dotnet_style_prefer_auto_properties = true:silent
 dotnet_style_prefer_conditional_expression_over_assignment = true:silent
 dotnet_style_prefer_conditional_expression_over_return = true:silent
 
+# Disable ConfigureAwait analyzer warnings repository-wide. Adjust IDs if your analyzer shows a different diagnostic ID.
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.VSTHRD200.severity = none
+
 ###############################
 # Naming Conventions          #
 ###############################

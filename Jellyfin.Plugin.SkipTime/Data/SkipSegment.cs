@@ -8,22 +8,22 @@ namespace Jellyfin.Plugin.SkipTime.Data;
 public sealed class SkipSegment
 {
     /// <summary>
-    /// Database identifier.
+    /// Gets or sets the database identifier.
     /// </summary>
     public long Id { get; set; }
 
     /// <summary>
-    /// Media item identifier.
+    /// Gets or sets the media item identifier.
     /// </summary>
     public Guid ItemId { get; set; }
 
     /// <summary>
-    /// Start position in ticks.
+    /// Gets or sets the start position in ticks.
     /// </summary>
     public long StartTicks { get; set; }
 
     /// <summary>
-    /// End position in ticks.
+    /// Gets or sets the end position in ticks.
     /// </summary>
     public long EndTicks { get; set; }
 }

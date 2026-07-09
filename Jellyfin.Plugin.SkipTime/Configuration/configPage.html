@@ -1,98 +1,599 @@
-<!doctype html>
-<html>
-    <head>
-        <title>Skip Time</title>
-    </head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Skip Time</title>
+</head>
 
-    <body>
-        <div id="SkipTimeConfigPage" data-role="page" class="page type-interior pluginConfigurationPage">
-            <div data-role="content">
-                <div class="content-primary">
-                    <form id="SkipTimeForm">
-                        <div class="verticalSection">
-                            <h2>Skip Time</h2>
+<body>
 
-                            <p class="fieldDescription">Configure skip ranges for movies and television episodes. These ranges will be exposed to Jellyfin as media segments and can be skipped automatically during playback.</p>
+    <div id="SkipTimeConfigPage"
+         data-role="page"
+         class="page type-interior pluginConfigurationPage"
+         data-require="emby-input,emby-button">
+
+        <div data-role="content">
+
+            <div class="content-primary">
+
+                <form id="SkipTimeConfigForm">
+
+                    <div class="verticalSection">
+                        <h2>Skip Time</h2>
+
+                        <div class="fieldDescription">
+                            Configure automatic skip ranges for movies and television
+                            episodes. These ranges are exposed to Jellyfin as media
+                            segments and are used by the Skip Time plugin during
+                            playback.
                         </div>
+                    </div>
+
+                    <br />
+
+                    <div class="verticalSection">
+
+                        <h3>Search Library</h3>
+
+                        <div class="inputContainer">
+
+                            <label class="inputLabel inputLabelUnfocused"
+                                   for="txtSearch">
+                                Movie or Episode
+                            </label>
+
+                            <input id="txtSearch"
+                                   is="emby-input"
+                                   type="text"
+                                   autocomplete="off" />
+
+                        </div>
+
+                        <div id="searchResults"
+                             class="selectionList">
+                        </div>
+
+                    </div>
+
+                    <br />
+
+                    <div class="verticalSection">
+
+                        <h3>Selected Item</h3>
+
+                        <div id="selectedTitle"
+                             class="secondaryText">
+                            No item selected.
+                        </div>
+
+                    </div>
+
+                    <br />
+
+                    <div class="verticalSection">
+
+                        <h3>Skip Ranges</h3>
+
+                        <table class="detailTable">
+
+                            <thead>
+
+                                <tr>
+
+                                    <th style="width:40%">
+                                        Start
+                                    </th>
+
+                                    <th style="width:40%">
+                                        End
+                                    </th>
+
+                                    <th style="width:20%"></th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody id="segmentTableBody">
+                            </tbody>
+
+                        </table>
 
                         <br />
 
-                        <div class="verticalSection">
-                            <h3>Search Library</h3>
+                        <button id="btnAdd"
+                                is="emby-button"
+                                type="button"
+                                class="raised">
 
-                            <div class="inputContainer">
-                                <input id="txtSearch" is="emby-input" type="text" autocomplete="off" placeholder="Movie or episode title" />
-                            </div>
+                            Add Range
 
-                            <div id="searchResults" class="selectionList"></div>
-                        </div>
+                        </button>
 
-                        <br />
+                    </div>
 
-                        <div class="verticalSection">
-                            <h3>Selected Item</h3>
+                    <br />
 
-                            <div id="selectedTitle">No item selected.</div>
-                        </div>
+                    <div>
 
-                        <br />
+                        <button id="btnSave"
+                                is="emby-button"
+                                type="submit"
+                                class="raised button-submit block">
 
-                        <div class="verticalSection">
-                            <h3>Skip Ranges</h3>
+                            Save
 
-                            <table class="detailTable">
-                                <thead>
-                                    <tr>
-                                        <th>Start</th>
+                        </button>
 
-                                        <th>End</th>
+                        <button id="btnDelete"
+                                is="emby-button"
+                                type="button"
+                                class="raised">
 
-                                        <th></th>
-                                    </tr>
-                                </thead>
+                            Delete All
 
-                                <tbody id="segmentTableBody"></tbody>
-                            </table>
+                        </button>
 
-                            <br />
+                    </div>
 
-                            <button id="btnAdd" is="emby-button" type="button" class="raised">Add Range</button>
-                        </div>
+                </form>
 
-                        <br />
-
-                        <div class="verticalSection">
-                            <button id="btnSave" is="emby-button" type="submit" class="raised button-submit">Save</button>
-
-                            <button id="btnDelete" is="emby-button" type="button" class="raised">Delete All</button>
-                        </div>
-                    </form>
-                </div>
             </div>
+
         </div>
 
-        <script src="configPage.js"></script>
-
         <script>
-            document.querySelector("#SkipTimeForm").addEventListener("submit", function (e) {
-                e.preventDefault();
 
-                SkipTime.save();
-            });
+            const SkipTimePage = {
 
-            document.querySelector("#txtSearch").addEventListener("input", function (e) {
-                SkipTime.searchLibrary(e.target.value);
-            });
+                selectedItem: null,
 
-            document.querySelector("#btnAdd").addEventListener("click", function () {
-                SkipTime.addSegment();
-            });
+                segments: [],
 
-            document.querySelector("#btnDelete").addEventListener("click", function () {
-                if (confirm("Delete all skip ranges for this item?")) {
-                    SkipTime.removeAll();
+                initialized: false,
+
+                searchTimer: null,
+
+                async api(url, options = {}) {
+
+                    const response = await ApiClient.ajax({
+                        url: url,
+                        type: options.method || "GET",
+                        contentType: "application/json",
+                        data: options.body
+                    });
+
+                    if (!response.ok) {
+
+                        const message = await response.text();
+
+                        throw new Error(message);
+                    }
+
+                    if (response === undefined || response === null || response.status === 204) {
+                        return null;
+                    }
+
+                    return await response.json();
+                },
+
+                initialize() {
+
+                    if (this.initialized) {
+                        return;
+                    }
+
+                    this.initialized = true;
+
+                    this.searchBox =
+                        document.querySelector("#txtSearch");
+
+                    this.searchResults =
+                        document.querySelector("#searchResults");
+
+                    this.selectedTitle =
+                        document.querySelector("#selectedTitle");
+
+                    this.segmentTable =
+                        document.querySelector("#segmentTableBody");
+
+                    this.btnAdd =
+                        document.querySelector("#btnAdd");
+
+                    this.btnDelete =
+                        document.querySelector("#btnDelete");
+
+                    this.form =
+                        document.querySelector("#SkipTimeConfigForm");
+
+                    this.form.addEventListener(
+                        "submit",
+                        this.save.bind(this));
+
+                    this.btnAdd.addEventListener(
+                        "click",
+                        this.addSegment.bind(this));
+
+                    this.btnDelete.addEventListener(
+                        "click",
+                        this.deleteAll.bind(this));
+
+                    this.searchBox.addEventListener(
+                        "input",
+                        this.onSearchChanged.bind(this));
+
+                    this.renderSegments();
+                },
+
+                async onPageShow() {
+
+                    Dashboard.showLoadingMsg();
+
+                    try {
+
+                        this.initialize(
+                            document.querySelector("#SkipTimeConfigPage"));
+
+                    }
+                    finally {
+
+                        Dashboard.hideLoadingMsg();
+
+                    }
+
+                },
+
+                onSearchChanged() {
+
+                    clearTimeout(this.searchTimer);
+
+                    const text =
+                        this.searchBox.value.trim();
+
+                    if (text.length < 2) {
+
+                        this.searchResults.innerHTML = "";
+
+                        return;
+
+                    }
+
+                    this.searchTimer =
+                        setTimeout(() => {
+
+                            this.search(text);
+
+                        }, 300);
+
+                },
+
+                async search(text) {
+
+                    try {
+
+                        const results =
+                            await this.api(
+                                "/SkipTime/Search?query="
+                                + encodeURIComponent(text));
+
+                        this.renderSearchResults(results);
+
+                    }
+                    catch (err) {
+
+                        console.error(err);
+
+                    }
+
+                },
+
+                renderSearchResults(items) {
+
+                    this.searchResults.innerHTML = "";
+
+                    if (!items.length) {
+
+                        this.searchResults.innerHTML =
+                            "<div class='secondaryText'>No results.</div>";
+
+                        return;
+
+                    }
+
+                    for (const item of items) {
+
+                        const div =
+                            document.createElement("div");
+
+                        div.className =
+                            "listItem listItem-border";
+
+                        div.innerHTML =
+                            "<div class='listItemBody'>"
+                            + "<div class='listItemBodyText'>"
+                            + this.escape(item.Name)
+                            + "</div>"
+                            + "<div class='secondary'>"
+                            + this.escape(item.Type)
+                            + (item.ProductionYear
+                                ? " (" + item.ProductionYear + ")"
+                                : "")
+                            + "</div>"
+                            + "</div>";
+
+                        div.addEventListener(
+                            "click",
+                            () => this.selectItem(item));
+
+                        this.searchResults.appendChild(div);
+
+                    }
+
+                },
+
+                async selectItem(item) {
+
+                    Dashboard.showLoadingMsg();
+
+                    try {
+
+                        this.selectedItem = item;
+
+                        this.selectedTitle.textContent =
+                            item.Name
+                            + (item.ProductionYear
+                                ? " (" + item.ProductionYear + ")"
+                                : "");
+
+                        this.segments =
+                            await this.api(
+                                "/SkipTime/"
+                                + item.ItemId);
+
+                        this.renderSegments();
+
+                    }
+                    finally {
+
+                        Dashboard.hideLoadingMsg();
+
+                    }
+
+                },
+
+                renderSegments() {
+
+                    this.segmentTable.innerHTML = "";
+
+                    if (!this.segments.length) {
+
+                        const row = document.createElement("tr");
+
+                        row.innerHTML =
+                            '<td colspan="3" class="secondaryText">No skip ranges configured.</td>';
+
+                        this.segmentTable.appendChild(row);
+
+                        return;
+                    }
+
+                    for (const segment of this.segments) {
+                        this.segmentTable.appendChild(this.createSegmentRow(segment));
+                    }
+                },
+
+                createSegmentRow (segment) {
+
+                    const row = document.createElement("tr");
+
+                    const startCell = document.createElement("td");
+                    const endCell = document.createElement("td");
+                    const actionCell = document.createElement("td");
+
+                    const startInput = document.createElement("input");
+                    startInput.type = "text";
+                    startInput.is = "emby-input";
+                    startInput.value = this.ticksToTime(segment.StartTicks);
+
+                    const endInput = document.createElement("input");
+                    endInput.type = "text";
+                    endInput.is = "emby-input";
+                    endInput.value = this.ticksToTime(segment.EndTicks);
+
+                    startInput.addEventListener("change", () => {
+                        segment.StartTicks = this.timeToTicks(startInput.value);
+                    });
+
+                    endInput.addEventListener("change", () => {
+                        segment.EndTicks = this.timeToTicks(endInput.value);
+                    });
+
+                    const deleteButton = document.createElement("button");
+                    deleteButton.type = "button";
+                    deleteButton.setAttribute("is", "emby-button");
+                    deleteButton.className = "raised";
+                    deleteButton.textContent = "Delete";
+
+                    deleteButton.addEventListener("click", () => {
+
+                        const index = this.segments.indexOf(segment);
+
+                        if (index >= 0) {
+
+                            this.segments.splice(index, 1);
+
+                            this.renderSegments();
+                        }
+                    });
+
+                    startCell.appendChild(startInput);
+                    endCell.appendChild(endInput);
+                    actionCell.appendChild(deleteButton);
+
+                    row.appendChild(startCell);
+                    row.appendChild(endCell);
+                    row.appendChild(actionCell);
+
+                    return row;
+                },
+
+                addSegment () {
+
+                    this.segments.push({
+                        StartTicks: 0,
+                        EndTicks: 10000000
+                    });
+
+                    this.renderSegments();
+                },
+
+                validateSegments () {
+
+                    this.segments.sort(function (a, b) {
+                        return a.StartTicks - b.StartTicks;
+                    });
+
+                    for (let i = 0; i < this.segments.length; i++) {
+
+                        const current = this.segments[i];
+
+                        if (current.StartTicks < 0) {
+                            throw new Error("Start time cannot be negative.");
+                        }
+
+                        if (current.EndTicks <= current.StartTicks) {
+                            throw new Error("End time must be after Start time.");
+                        }
+
+                        if (i === 0) {
+                            continue;
+                        }
+
+                        const previous = this.segments[i - 1];
+
+                        if (current.StartTicks < previous.EndTicks) {
+                            throw new Error("Skip ranges may not overlap.");
+                        }
+                    }
+                },
+
+                ticksToTime (ticks) {
+
+                    let totalSeconds = Math.floor(ticks / 10000000);
+
+                    const hours = Math.floor(totalSeconds / 3600);
+                    totalSeconds -= hours * 3600;
+
+                    const minutes = Math.floor(totalSeconds / 60);
+                    totalSeconds -= minutes * 60;
+
+                    const seconds = totalSeconds;
+
+                    return [
+                        hours.toString().padStart(2, "0"),
+                        minutes.toString().padStart(2, "0"),
+                        seconds.toString().padStart(2, "0")
+                    ].join(":");
+                },
+
+                timeToTicks (value) {
+
+                    const parts = value.trim().split(":");
+
+                    if (parts.length !== 3) {
+                        throw new Error("Time must be HH:MM:SS");
+                    }
+
+                    const h = parseInt(parts[0], 10);
+                    const m = parseInt(parts[1], 10);
+                    const s = parseInt(parts[2], 10);
+
+                    if (Number.isNaN(h) ||
+                        Number.isNaN(m) ||
+                        Number.isNaN(s)) {
+
+                        throw new Error("Invalid time.");
+                    }
+
+                    return ((h * 3600) + (m * 60) + s) * 10000000;
+                },
+
+                async save () {
+
+                    if (!this.selectedItem) {
+                        Dashboard.alert("Select a movie or episode first.");
+                        return;
+                    }
+
+                    try {
+
+                        this.validateSegments();
+
+                        await this.api(
+                            "/SkipTime/" + this.selectedItem.ItemId,
+                            {
+                                method: "POST",
+                                body: JSON.stringify(this.segments)
+                            });
+
+                        Dashboard.alert("Skip ranges saved.");
+
+                    } catch (err) {
+
+                        Dashboard.alert(err.message || err);
+                    }
+                },
+
+                async deleteAll () {
+
+                    if (!this.selectedItem) {
+                        Dashboard.alert("Select a movie or episode first.");
+                        return;
+                    }
+
+                    const confirmed = await Dashboard.confirm({
+                        title: "Delete Skip Ranges",
+                        text: "Delete all skip ranges for this item?"
+                    });
+
+                    if (!confirmed) {
+                        return;
+                    }
+
+                    await this.api(
+                        "/SkipTime/" + this.selectedItem.ItemId,
+                        {
+                            method: "DELETE"
+                        });
+
+                    this.segments = [];
+
+                    this.renderSegments();
+
+                    Dashboard.alert("Skip ranges deleted.");
+                },
+
+                escape (text) {
+
+                    if (text === null || text === undefined) {
+                        return "";
+                    }
+
+                    return text
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .replace(/"/g, "&quot;")
+                        .replace(/'/g, "&#39;");
                 }
-            });
+            };
+
+            document
+                .querySelector("#SkipTimeConfigPage")
+                .addEventListener("pageshow", function () {
+                    SkipTimePage.initialize();
+                });
+
         </script>
-    </body>
+</body>
 </html>
